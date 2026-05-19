@@ -1,0 +1,31 @@
+services:
+
+  # ────────────────────────────────────────────────────────────
+  # PostgreSQL + pgvector
+  # ────────────────────────────────────────────────────────────
+  # Base de datos vectorial para almacenar embeddings.
+  # Accesible en: localhost:5432
+  # Conexión:     postgresql+psycopg://postgres:postgres@localhost:5432/vectordb
+  # ────────────────────────────────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: rag-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: vectordb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d vectordb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+    name: rag-pgdata
+
