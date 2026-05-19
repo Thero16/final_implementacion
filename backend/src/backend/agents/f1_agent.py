@@ -53,7 +53,7 @@ def _get_llm() -> ChatOllama:
         model=settings.ollama_model,
         base_url=settings.ollama_base_url,
         temperature=0,
-        num_predict=20,
+        num_predict=10,
     )
 
 
