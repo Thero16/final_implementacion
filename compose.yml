@@ -25,7 +25,42 @@ services:
       timeout: 5s
       retries: 5
 
+  # ────────────────────────────────────────────────────────────
+  # Keycloak — Identity Provider
+  # Admin UI: http://localhost:8080/admin  (admin / admin)
+  # ────────────────────────────────────────────────────────────
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2
+    container_name: f1-keycloak
+    command: start-dev --import-realm --http-enabled=true --hostname-strict=false --hostname=localhost
+    restart: unless-stopped
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./keycloak/f1-realm-realm.json:/opt/keycloak/data/import/f1-realm-realm.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ────────────────────────────────────────────────────────────
+  # Ollama — Local LLM server
+  # API: http://localhost:11434
+  # ────────────────────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: f1-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+      - ./ollama-entrypoint.sh:/entrypoint.sh:ro
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+
 volumes:
   pgdata:
-    name: rag-pgdata
+  ollama_data:
 

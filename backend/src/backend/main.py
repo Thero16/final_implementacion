@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.backend.config.settings import get_settings
 from src.backend.models.database import init_db
 from src.backend.controllers.agent_controller import router as agent_router
+from src.backend.controllers.auth_controller import router as auth_router
 from src.backend.controllers.document_controller import router as document_router
 
 logging.basicConfig(
@@ -61,13 +62,14 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(agent_router,     prefix="/api/v1")
+app.include_router(auth_router,     prefix="/api/v1")
+app.include_router(agent_router,    prefix="/api/v1")
 app.include_router(document_router, prefix="/api/v1")
 
 

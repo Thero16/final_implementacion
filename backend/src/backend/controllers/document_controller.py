@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.backend.deps import get_current_user
 from src.backend.models.database import Document, get_db
 from src.backend.models.schemas import DocumentOut, DocumentDeleteResponse
 from src.backend.services.ingestion_service import (
@@ -26,14 +27,12 @@ MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 async def upload_document(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
-    """
-    Upload a file to extend the F1 agent's knowledge base.
-    Supported formats: PDF, TXT, MD, CSV, DOCX.
-    """
+    """Upload a file to extend the F1 agent's knowledge base."""
     original_name = file.filename or "unnamed"
     ext = Path(original_name).suffix.lower()
-    
+
     if ext not in SUPPORTED_EXTENSIONS:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
@@ -51,6 +50,7 @@ async def upload_document(
 
     saved_filename = generate_saved_filename(original_name)
     doc_record = Document(
+        user_id=current_user.get("sub"),
         filename=saved_filename,
         original_name=original_name,
         status="processing",
@@ -59,7 +59,6 @@ async def upload_document(
     await db.commit()
     await db.refresh(doc_record)
 
-    # Ingestion pipeline
     try:
         chunk_count = ingest_file(file_bytes, original_name, saved_filename)
         doc_record.status = "ready"
@@ -89,10 +88,13 @@ async def upload_document(
 @router.get("/", response_model=list[DocumentOut])
 async def list_documents(
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
-    """List all uploaded documents."""
+    """List documents uploaded by the authenticated user."""
     result = await db.execute(
-        select(Document).order_by(Document.uploaded_at.desc())
+        select(Document)
+        .where(Document.user_id == current_user.get("sub"))
+        .order_by(Document.uploaded_at.desc())
     )
     return result.scalars().all()
 
@@ -101,10 +103,14 @@ async def list_documents(
 async def delete_document(
     document_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
-    """Delete a document and clean its vectors from PGVector."""
+    """Delete a document owned by the authenticated user and clean its vectors."""
     result = await db.execute(
-        select(Document).where(Document.id == document_id)
+        select(Document).where(
+            Document.id == document_id,
+            Document.user_id == current_user.get("sub"),
+        )
     )
     doc = result.scalar_one_or_none()
     if not doc:
@@ -127,12 +133,16 @@ async def delete_document(
 @router.get("/stats")
 async def documents_stats(
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
-    """Get document and vector store stats."""
+    """Get document and vector store stats for the authenticated user."""
     from src.backend.vectorstore.pg_vector import document_count
 
     result = await db.execute(
-        select(Document).where(Document.status == "ready")
+        select(Document).where(
+            Document.status == "ready",
+            Document.user_id == current_user.get("sub"),
+        )
     )
     docs = result.scalars().all()
     total_chunks = sum(d.chunk_count for d in docs)

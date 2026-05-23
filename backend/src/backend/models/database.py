@@ -25,6 +25,7 @@ class Conversation(Base):
     __tablename__ = "conversations"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(128), nullable=True, index=True)
     question: Mapped[str] = mapped_column(Text)
     answer: Mapped[str] = mapped_column(Text)
     sources: Mapped[str] = mapped_column(Text, default="")
@@ -35,6 +36,7 @@ class Document(Base):
     __tablename__ = "documents"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(128), nullable=True, index=True)
     filename: Mapped[str] = mapped_column(String(256))
     original_name: Mapped[str] = mapped_column(String(256))
     chunk_count: Mapped[int] = mapped_column(Integer, default=0)

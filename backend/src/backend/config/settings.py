@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     chunk_overlap: int
     min_similarity_score: float
 
+    # Keycloak
+    keycloak_url: str
+    keycloak_realm: str
+    keycloak_client_id: str
+
 
 @lru_cache
 def get_settings() -> Settings:
